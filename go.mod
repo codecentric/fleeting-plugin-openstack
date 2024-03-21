@@ -1,6 +1,6 @@
-module github.com/sardinasystems/fleeting-plugin-openstack
+module github.com/T4cC0re/fleeting-plugin-openstack
 
-go 1.22
+go 1.21
 
 require (
 	github.com/gophercloud/gophercloud/v2 v2.0.0-beta.2

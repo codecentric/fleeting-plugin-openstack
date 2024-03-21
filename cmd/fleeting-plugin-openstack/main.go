@@ -1,7 +1,7 @@
 package main
 
 import (
-	osplugin "github.com/sardinasystems/fleeting-plugin-openstack"
+	osplugin "github.com/T4cC0re/fleeting-plugin-openstack"
 	"gitlab.com/gitlab-org/fleeting/fleeting/plugin"
 )
 
