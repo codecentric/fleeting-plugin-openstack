@@ -40,6 +40,7 @@ type ExtCreateOpts struct {
 	Networks             any                    `json:"networks,omitempty"`
 	SecurityGroups       []string               `json:"security_groups,omitempty"`
 	UserData             string                 `json:"user_data,omitempty"`
+	SchedulerHints       *SchedulerHints        `json:"scheduler_hints,omitempty"`
 }
 
 // ToServerCreateMap for extended opts
