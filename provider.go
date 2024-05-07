@@ -111,11 +111,20 @@ func (g *InstanceGroup) Update(ctx context.Context, update func(instance string,
 		state := provider.StateCreating
 
 		switch srv.Status {
-		case "BUILD", "MIGRATING", "PAUSED", "REBUILD":
-			// pass
+		case "BUILD", "MIGRATING", "REBUILD":
+			state = provider.StateCreating
 
-		case "DELETED", "SHUTOFF", "UNKNOWN":
+		case "DELETED", "SOFT_DELETED":
 			state = provider.StateDeleting
+
+		case "ERROR", "SUSPENDED", "SHUTOFF", "UNKNOWN", "PAUSED", "RESCUE", "SHELVED", "SHELVED_OFFLOADED":
+			// Delete VMs in this state
+			state = provider.StateDeleting
+			g.log.Error("Instance in unexpected state. Deleting...", "instance", srv.ID, "state", srv.Status)
+			err := g.deleteInstance(ctx, srv.ID)
+			if err != nil {
+				g.log.Error("Failed to delete instance", "instance", srv.ID, "state", srv.Status)
+			}
 
 		case "ACTIVE":
 			if srv.Created.Add(g.BootTime).Before(time.Now()) {
