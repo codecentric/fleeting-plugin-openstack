@@ -9,8 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/apiversions"
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/v2/openstack/config"
 	clouds "github.com/gophercloud/gophercloud/v2/openstack/config/clouds"
@@ -22,6 +24,9 @@ import (
 )
 
 const MetadataKey = "fleeting-cluster"
+const OPENSTACK_NOVA_MIN = "2.71"
+
+var supportedMinimum = semver.MustParse(OPENSTACK_NOVA_MIN)
 
 var _ provider.InstanceGroup = (*InstanceGroup)(nil)
 
@@ -64,7 +69,19 @@ func (g *InstanceGroup) Init(ctx context.Context, log hclog.Logger, settings pro
 		return provider.ProviderInfo{}, fmt.Errorf("Failed to connect to OpenStack Nova: %w", err)
 	}
 
-	cli.Microversion = "2.72" // train+
+	version, err := apiversions.Get(ctx, cli, "v2.1").Extract()
+	if err != nil {
+		log.Warn("Failed to get OpenStack API version, falling back...", "error", err)
+		cli.Microversion = OPENSTACK_NOVA_MIN
+	} else {
+		v, _ := semver.NewVersion(version.Version)
+		if v == nil || v.LessThan(supportedMinimum) {
+			return provider.ProviderInfo{}, fmt.Errorf("OpenStack Nova: runs unsupported version. Minimum required microversion is %s, reported maximum is %s", OPENSTACK_NOVA_MIN, version.Version)
+		}
+		cli.Microversion = version.Version
+	}
+	log.Info("Using OpenStack Nova API Version", "version", cli.Microversion)
+
 	g.computeClient = cli
 
 	if !settings.ConnectorConfig.UseStaticCredentials {
