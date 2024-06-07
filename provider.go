@@ -258,7 +258,7 @@ func (g *InstanceGroup) createInstance(ctx context.Context) (string, error) {
 	}
 	spec.Metadata[MetadataKey] = g.Name
 
-	srv, err := servers.Create(ctx, g.computeClient, spec).Extract()
+	srv, err := servers.Create(ctx, g.computeClient, spec, nil).Extract()
 	if err != nil {
 		return "", err
 	}

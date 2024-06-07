@@ -19,10 +19,9 @@ type ExtCreateOpts struct {
 	KeyName     string `json:"key_name,omitempty"`
 
 	// annotation overrides
-	Networks       []servers.Network       `json:"networks,omitempty"`
-	SecurityGroups []string                `json:"security_groups,omitempty"`
-	UserData       string                  `json:"user_data,omitempty"`
-	SchedulerHints *servers.SchedulerHints `json:"scheduler_hints,omitempty"`
+	Networks       []servers.Network `json:"networks,omitempty"`
+	SecurityGroups []string          `json:"security_groups,omitempty"`
+	UserData       string            `json:"user_data,omitempty"`
 }
 
 // ToServerCreateMap for extended opts
@@ -37,10 +36,6 @@ func (opts ExtCreateOpts) ToServerCreateMap() (map[string]interface{}, error) {
 
 	if opts.UserData != "" {
 		opts.CreateOpts.UserData = []byte(opts.UserData)
-	}
-
-	if opts.SchedulerHints != nil {
-		opts.CreateOpts.SchedulerHints = opts.SchedulerHints
 	}
 
 	ob, err := opts.CreateOpts.ToServerCreateMap()
