@@ -1,4 +1,4 @@
-module github.com/T4cC0re/fleeting-plugin-openstack
+module github.com/codecentric/fleeting-plugin-openstack
 
 go 1.21.6
 
