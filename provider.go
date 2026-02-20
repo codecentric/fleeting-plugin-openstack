@@ -84,10 +84,6 @@ func (g *InstanceGroup) Init(ctx context.Context, log hclog.Logger, settings pro
 
 	g.computeClient = cli
 
-	if !settings.ConnectorConfig.UseStaticCredentials {
-		return provider.ProviderInfo{}, fmt.Errorf("Only static credentials supported")
-	}
-
 	if g.BootTimeS != "" {
 		g.BootTime, err = time.ParseDuration(g.BootTimeS)
 		if err != nil {
@@ -315,6 +311,12 @@ func (g *InstanceGroup) ConnectInfo(ctx context.Context, instanceID string) (pro
 	info.Protocol = provider.ProtocolSSH
 
 	// g.log.Debug("Info", "info", info)
+
+	// When not using static credentials, SSH key authentication is handled
+	// via OpenStack keypairs (key_name in server_spec). Skip connection test.
+	if !info.UseStaticCredentials {
+		return info, nil
+	}
 
 	inp := bytes.NewBuffer(nil)
 	combinedOut := bytes.NewBuffer(nil)

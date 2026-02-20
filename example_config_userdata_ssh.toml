@@ -1,0 +1,66 @@
+[[runners]]
+  name = "openstack fleeting plugin with SSH keys via user data"
+  url = "https://gitlab.com"
+  token = "<TOKEN>"
+  shell = "sh"
+  executor = "docker-autoscaler"
+
+[runners.autoscaler]
+  plugin = "fleeting-plugin-openstack"
+  max_instances = 5
+  capacity_per_instance = 1
+
+[runners.autoscaler.plugin_config]
+  cloud = "mycloud"
+  # clouds_config = "/path/to/clouds.yaml"
+  name = "gitlab-runners"
+  boot_time = "5m"
+
+[runners.autoscaler.plugin_config.server_spec]
+  name = "gitlab-runner-%d"
+  description = "GitLab CI runner instance"
+  tags = ["GitLab", "CI"]
+  imageRef = "<IMAGE_ID>"                    # Ubuntu, Fedora, etc.
+  flavorRef = "<FLAVOR_ID>"                  # Instance size
+  networks = [ { uuid = "<NETWORK_UUID>" } ] # Network configuration
+  security_groups = [ "<SECURITY_GROUP>" ]   # Allow SSH access
+  # NOTE: Do NOT specify key_name when using SSH keys via user data
+  # key_name = ""  # Leave empty or omit entirely
+  
+  # Add SSH public key via cloud-init user data
+  user_data = '''#cloud-config
+package_update: true
+package_upgrade: true
+
+# Add your SSH public key here
+ssh_authorized_keys:
+  - <PUBLIC_SSH_KEY>
+
+# Optional: Additional configuration
+write_files:
+  - path: /tmp/init_complete.txt
+    content: |
+      Instance initialized successfully with cloud-init
+
+runcmd:
+  - [ "touch", "/tmp/cloud_init_complete" ]
+  # For Podman/Docker setups:
+  # - systemctl --now enable podman.socket
+  # - sudo -u <username> systemctl --user --now enable podman.socket
+'''
+
+[runners.autoscaler.connector_config]
+  username = "ubuntu"                           # Or "fedora", "centos", etc. depending on image
+  key_path = "/etc/gitlab-runner/keys/id_rsa"   # Path to PRIVATE SSH key
+  use_static_credentials = false                # IMPORTANT: Set to false for SSH key auth
+  os = "linux"
+  arch = "amd64"
+  protocol = "ssh"
+  protocol_port = 22
+  use_external_addr = true
+  keepalive = "30s"
+  timeout = "5m"
+
+[[runners.autoscaler.policy]]
+  idle_count = 1
+  idle_time = "20m"

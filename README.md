@@ -1,37 +1,47 @@
-fleeting-plugin-openstack
-=========================
+# fleeting-plugin-openstack
 
 GitLab fleeting plugin for OpenStack.
 
 https://docs.gitlab.com/runner/executors/docker_autoscaler.html
 
-
-Plugin Configuration
---------------------
+## Plugin Configuration
 
 The following parameters are supported:
 
-| Parameter             | Type   | Description |
-|-----------------------|--------|-------------|
-| `cloud`               | string | Name of the cloud config from clouds.yaml to use |
-| `clouds_config`       | string | Optional. Path to clouds.yaml |
-| `name`                | string | Name of the Auto Scaling Group |
-| `boot_time`           | string | Optional. Maximum wait time for instance to boot up. During that time plugin check Cloud-Init signatures. |
-| `server_spec`         | object | Server spec used to create instances. See: [Compute API](https://docs.openstack.org/api-ref/compute/#create-server) |
-
+| Parameter       | Type   | Description                                                                                                         |
+| --------------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| `cloud`         | string | Name of the cloud config from clouds.yaml to use                                                                    |
+| `clouds_config` | string | Optional. Path to clouds.yaml                                                                                       |
+| `name`          | string | Name of the Auto Scaling Group                                                                                      |
+| `boot_time`     | string | Optional. Maximum wait time for instance to boot up. During that time plugin check Cloud-Init signatures.           |
+| `server_spec`   | object | Server spec used to create instances. See: [Compute API](https://docs.openstack.org/api-ref/compute/#create-server) |
 
 ### Default connector config
 
-| Parameter                | Default  |
-|--------------------------|----------|
-| `os`                     | `linux`  |
-| `protocol`               | `ssh`    |
-| `username`               | `unset`  |
-| `use_static_credentials` | `true`   |
+| Parameter                | Default |
+| ------------------------ | ------- |
+| `os`                     | `linux` |
+| `protocol`               | `ssh`   |
+| `username`               | `unset` |
+| `use_static_credentials` | `true`  |
 
+### SSH Key Authentication
 
-OpenStack setup
----------------
+The plugin supports two methods for SSH key authentication:
+
+1. **OpenStack Keypairs (Traditional)**: Pre-register SSH keys in OpenStack and reference them via `key_name` in `server_spec`
+2. **Cloud-Init User Data**: Embed SSH public keys directly in the instance's user data using cloud-init's `ssh_authorized_keys`
+
+When using SSH keys via user data:
+
+- Set `use_static_credentials = false` in `connector_config`
+- Provide `key_path` pointing to your private key file
+- Do NOT specify `key_name` in `server_spec`
+- Add your public key to `user_data` using cloud-init's `ssh_authorized_keys` directive
+
+See `example_config_userdata_ssh.toml` for a complete example.
+
+## OpenStack setup
 
 1. You should create a special user (recommended) and project (optional),
    then export clouds.yaml with credentials for that cloud.
@@ -43,12 +53,14 @@ OpenStack setup
 3. You should upload a special image with gitlab-runner and container runtime installed in it.
    For example we use [Fedora 38 with Podman](https://mirror.sardinasystems.com/images/Fedora-Cloud-Gitlab-Runner-38-1.6.x86_64.qcow2).
 
-4. You should generate SSH keypair which will be used my manager instance to connect to workers.
-   Public key must be added to Nova from the user.
+4. **SSH Key Setup (Choose one method)**:
+   - **Method A (Cloud-Init)**: Generate an SSH keypair for the manager instance. The public key will be embedded in user data via cloud-init's `ssh_authorized_keys`. No OpenStack keypair registration needed.
+   - **Method B (OpenStack Keypairs)**: Generate an SSH keypair and register the public key in Nova/OpenStack, then reference it via `key_name` in the server spec.
 
+## Example runner config
 
-Example runner config
----------------------
+### Example 1: Using OpenStack Keypairs (Traditional)
+
 ```
 concurrent = 16
 check_interval = 0
@@ -138,3 +150,13 @@ idle_time = "30m0s"
 scale_factor = 0.0
 scale_factor_limit = 0
 ```
+
+### Example 2: Using SSH Keys via Cloud-Init User Data
+
+See [`example_config_userdata_ssh.toml`](./example_config_userdata_ssh.toml) for a complete example that embeds SSH public keys in user data without requiring OpenStack keypair registration.
+
+Key differences:
+
+- Set `use_static_credentials = false`
+- Omit `key_name` from `server_spec`
+- Add `ssh_authorized_keys` to `user_data`
