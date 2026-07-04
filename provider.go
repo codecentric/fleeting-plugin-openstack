@@ -229,12 +229,7 @@ func (g *InstanceGroup) getInstances(ctx context.Context, initial bool) ([]serve
 		filteredServers = append(filteredServers, srv)
 	}
 
-	size := len(filteredServers)
-
-	if !initial && size != g.size {
-		g.log.Error("out-of-sync capacity", "expected", g.size, "actual", size)
-	}
-	g.size = size
+	g.size = len(filteredServers)
 
 	return filteredServers, nil
 }
@@ -306,9 +301,11 @@ func (g *InstanceGroup) ConnectInfo(ctx context.Context, instanceID string) (pro
 
 	// TODO: get image metadata and get os_admin_user
 	// TODO: get from image meta
-	info.OS = "linux"
+	info.OS = "windows"
+
 	info.Arch = "amd64"
-	info.Protocol = provider.ProtocolSSH
+	// info.Protocol = provider.ProtocolSSH
+	info.Protocol = provider.ProtocolWinRM
 
 	// g.log.Debug("Info", "info", info)
 

@@ -3,6 +3,7 @@ package fpoc
 import (
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
@@ -15,8 +16,7 @@ type ExtCreateOpts struct {
 	servers.CreateOpts
 
 	// fields absent in gophercloud
-	Description string `json:"description,omitempty"`
-	KeyName     string `json:"key_name,omitempty"`
+	KeyName string `json:"key_name,omitempty"`
 
 	// annotation overrides
 	Networks       []servers.Network `json:"networks,omitempty"`
@@ -25,7 +25,7 @@ type ExtCreateOpts struct {
 }
 
 // ToServerCreateMap for extended opts
-func (opts ExtCreateOpts) ToServerCreateMap() (map[string]interface{}, error) {
+func (opts ExtCreateOpts) ToServerCreateMap() (map[string]any, error) {
 	if opts.Networks != nil {
 		opts.CreateOpts.Networks = opts.Networks
 	}
@@ -43,21 +43,7 @@ func (opts ExtCreateOpts) ToServerCreateMap() (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	/*
-		b, err := gophercloud.BuildRequestBody(opts, "")
-		if err != nil {
-			return nil, err
-		}
-
-		delete(b, "user_data")
-		delete(b, "security_groups")
-		delete(b, "SchedulerHints")
-	*/
-
 	b := map[string]any{}
-	if opts.Description != "" {
-		b["description"] = opts.Description
-	}
 	if opts.KeyName != "" {
 		b["key_name"] = opts.KeyName
 	}
@@ -109,11 +95,5 @@ var initFinishedRe = regexp.MustCompile(`^.*Cloud-init\ v\.\ \d+\.\d+\.\d+\ fini
 
 func IsCloudInitFinished(log string) bool {
 	lines := strings.Split(log, "\n")
-
-	for _, line := range lines {
-		if initFinishedRe.MatchString(line) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(lines, initFinishedRe.MatchString)
 }
