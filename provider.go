@@ -1,7 +1,6 @@
 package fpoc
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -19,7 +18,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/jinzhu/copier"
 
-	"gitlab.com/gitlab-org/fleeting/fleeting/connector"
 	"gitlab.com/gitlab-org/fleeting/fleeting/provider"
 )
 
@@ -140,25 +138,7 @@ func (g *InstanceGroup) Update(ctx context.Context, update func(instance string,
 			}
 
 		case "ACTIVE":
-			if srv.Created.Add(g.BootTime).Before(time.Now()) {
-				// treat all nodes running long enough as Running
-				state = provider.StateRunning
-			} else {
-				log, err := servers.ShowConsoleOutput(ctx, g.computeClient, srv.ID, servers.ShowConsoleOutputOpts{
-					Length: 100,
-				}).Extract()
-				if err != nil {
-					reterr = errors.Join(reterr, err)
-					continue
-				}
-
-				if IsCloudInitFinished(log) {
-					g.log.Debug("Instance cloud-init finished", "server_id", srv.ID, "created", srv.Created)
-					state = provider.StateRunning
-				} else {
-					g.log.Debug("Instance boot time not passed and cloud-init not finished", "server_id", srv.ID, "created", srv.Created, "boot_time", g.BootTime)
-				}
-			}
+			state = provider.StateRunning
 		}
 
 		update(srv.ID, state)
@@ -232,7 +212,7 @@ func (g *InstanceGroup) getInstances(ctx context.Context, initial bool) ([]serve
 	size := len(filteredServers)
 
 	if !initial && size != g.size {
-		g.log.Error("out-of-sync capacity", "expected", g.size, "actual", size)
+		g.log.Info("out-of-sync capacity", "expected", g.size, "actual", size)
 	}
 	g.size = size
 
@@ -317,26 +297,6 @@ func (g *InstanceGroup) ConnectInfo(ctx context.Context, instanceID string) (pro
 	if !info.UseStaticCredentials {
 		return info, nil
 	}
-
-	inp := bytes.NewBuffer(nil)
-	combinedOut := bytes.NewBuffer(nil)
-
-	ropts := connector.ConnectorOptions{
-		DialOptions: connector.DialOptions{
-			// UseExternalAddr: true,
-		},
-		RunOptions: connector.RunOptions{
-			Command: `echo "ok"`,
-			Stdin:   inp,
-			Stdout:  combinedOut,
-			Stderr:  combinedOut,
-		},
-	}
-	err = connector.Run(ctx, info, ropts)
-	if err != nil {
-		return provider.ConnectInfo{}, fmt.Errorf("Failed to test ssh: %w", err)
-	}
-	g.log.Debug("SSH test result", "out", combinedOut.String())
 
 	return info, nil
 }
