@@ -3,6 +3,7 @@ package fpoc
 import (
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
@@ -25,7 +26,7 @@ type ExtCreateOpts struct {
 }
 
 // ToServerCreateMap for extended opts
-func (opts ExtCreateOpts) ToServerCreateMap() (map[string]interface{}, error) {
+func (opts ExtCreateOpts) ToServerCreateMap() (map[string]any, error) {
 	if opts.Networks != nil {
 		opts.CreateOpts.Networks = opts.Networks
 	}
@@ -79,7 +80,7 @@ func extractAddresses(srv *servers.Server) (map[string][]Address, error) {
 	ret := make(map[string][]Address, len(srv.Addresses))
 
 	for net, isv := range srv.Addresses {
-		ism := isv.([]interface{})
+		ism := isv.([]any)
 		items := make([]Address, 0, len(ism))
 
 		for _, iv := range ism {
@@ -110,10 +111,5 @@ var initFinishedRe = regexp.MustCompile(`^.*Cloud-init\ v\.\ \d+\.\d+\.\d+\ fini
 func IsCloudInitFinished(log string) bool {
 	lines := strings.Split(log, "\n")
 
-	for _, line := range lines {
-		if initFinishedRe.MatchString(line) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(lines, initFinishedRe.MatchString)
 }
